@@ -5,14 +5,13 @@ import argparse
 cuda_condition = torch.cuda.is_available()
 device = torch.device('cuda:0' if cuda_condition else 'cpu')
 
-# VocabPath = 'checkpoint/pretrain/vocab.txt'
-VocabPath = 'checkpoint/pretrain/vocab.txt'
+VocabPath = 'checkpoint/saved/vocab.txt'
 
 # ## mlm模型文件路径 ## #
 SourcePath = 'data/test/all_data.txt'
 CorpusPath = 'data/test/train.txt'
 TestPath = 'data/test/test.txt'
-PronunciationPath = 'data/char_meta.txt'
+PronunciationPath = 'char_data/char_meta.txt'
 
 # Debug开关
 Debug = False
@@ -21,7 +20,6 @@ Debug = False
 AttentionMask = True
 
 # 使用预训练模型开关
-# 目前未配置预外部训练模型
 UsePretrain = True
 
 # mask方式
@@ -39,7 +37,8 @@ else:
 MLMLearningRate = 1e-4
 BatchSize = 16
 SentenceLength = 16
-FinetunePath = 'checkpoint/train/mlm_trained.model'
+# FinetunePath = 'checkpoint/saved/mlm_trained_len_{}.model'.format(SentenceLength)
+FinetunePath = '/Users/xmly/PycharmProjects/smbert_corr_ori/checkpoint/pretrain_model/mlm_trained_alldata_len_16_4.model'
 # ## MLM训练调试参数结束 ## #
 
 # ## MLM通用参数 ## #

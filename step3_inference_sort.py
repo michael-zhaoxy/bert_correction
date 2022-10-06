@@ -10,7 +10,6 @@ from config import FinetunePath, device, PronunciationPath, SentenceLength
 from smbert.data.smbert_dataset import DataFactory
 from nltk.util import ngrams
 import pickle
-from slm.char_sim import CharFuncs
 
 def curve(confidence, similarity):
     flag1 = 20 / 3 * confidence + similarity - 21.2 / 3 > 0
@@ -31,8 +30,7 @@ class Inference(object):
         self.sen_wrong = 0
         self.mode = mode
         self.model = torch.load(FinetunePath).to(device).eval()
-        # self.model = torch.load(FinetunePath).to(device).eval()
-        # self.char_func = CharFuncs(PronunciationPath)
+        self.model.device = device
         self.smbert_data = DataFactory()
         print('加载模型完成！')
 
@@ -48,6 +46,7 @@ class Inference(object):
         segments = torch.tensor(segments).unsqueeze(0).to(device)
         return inputs, position, segments
 
+    # 末尾的[SEP]是否需要，做实验
     def get_topk(self, text):
         input_len = len(text)
         text2id, position, segments = self.get_id_from_text(text)
@@ -142,7 +141,7 @@ if __name__ == '__main__':
     right_cnt = 0
     all_num = 0
     s_time = time.time()
-    ids_model = CharFuncs('data/char_meta.txt')
+    ids_model = CharFuncs('char_data/char_meta.txt')
     result_line = []
 
     for line in (f):
@@ -151,6 +150,8 @@ if __name__ == '__main__':
             line = line.split('<:>')
             src = line[0]
             label = line[1]
+            if len(src) > 14:
+                continue
             all_num += 1
             result = bert_infer.inference_single(src, '')
 
@@ -159,7 +160,7 @@ if __name__ == '__main__':
 
             for _ in result['纠正句子']:
 
-                if(ids_model.similarity_seqs(_, src) < 0.52 or _ == src):
+                if(ids_model.similarity_seqs(_, src)[0] < 0.52 or _ == src):
                     continue
 
                 prop_q = getScore(_)

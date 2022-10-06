@@ -27,8 +27,6 @@ class Inference(object):
         self.sen_invalid = 0
         self.sen_wrong = 0
         self.mode = mode
-        # path = 'checkpoint/bert/model.ckpt-100000.data-00000-of-00001'
-        # self.model = torch.load(path).to(device).eval()
         self.model = torch.load(FinetunePath).to(device).eval()
         self.char_func = CharFuncs(PronunciationPath)
         self.smbert_data = DataFactory()

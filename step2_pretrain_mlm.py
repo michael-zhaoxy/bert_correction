@@ -15,16 +15,18 @@ if __name__ == '__main__':
     if Debug:
         print('开始训练 %s' % get_time())
     bert_config_T = BertConfig.from_json_file(bert_config_file)
-    soft_masked_bert = EcBert(bert_config_T).to(device)
-    # if torch.cuda.device_count()>1:
-    #     soft_masked_bert= nn.DataParallel(soft_masked_bert, device_ids=[0,1])
+    bert_config_T.device = device
+    soft_masked_bert = SMBertMlm(bert_config_T).to(device)
+    soft_masked_bert.device = device
+    if torch.cuda.device_count()>1:
+        soft_masked_bert= nn.DataParallel(soft_masked_bert, device_ids=[0,1])
     if Debug:
         print('Total Parameters:', sum([p.nelement() for p in soft_masked_bert.parameters()]))
 
-    # if os.path.exists(FinetunePath):
-    #     print('开始加载本地预训练模型！')
-    #     soft_masked_bert.load_pretrain(FinetunePath)
-    #     print('完成加载本地预训练模型！')
+    if os.path.exists(FinetunePath):
+        print('开始加载本地预训练模型！')
+        soft_masked_bert.load_pretrain(FinetunePath)
+        print('完成加载本地预训练模型！')
 
     dataset = SMBertDataSet(CorpusPath)
     evalset = SMBertEvalSet(TestPath)
@@ -106,7 +108,7 @@ if __name__ == '__main__':
                 precision = float(precision_cnt) / float(eval_count)
                 # recall = float(recall_cnt) / float(eval_count)
 
-                print('精确率：%s' % round(precision, 2))
+                print('精确率：%s' % round(precision, 6))
                 # print('召回率：%s' % round(recall, 2))
 
                 # save

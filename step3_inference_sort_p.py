@@ -12,7 +12,6 @@ from smbert.data.smbert_dataset import DataFactory
 from nltk.util import ngrams
 import pickle
 import re
-from slm.char_sim import CharFuncs
 from smbert.layers.SM_Bert_mlm import SMBertMlm
 from transformers import BertConfig
 
@@ -194,7 +193,7 @@ if __name__ == '__main__':
 
     result_line = []
 
-    ids_model = CharFuncs('data/char_meta.txt')
+    ids_model = CharFuncs('char_data/char_meta.txt')
 
     cache = set()
 

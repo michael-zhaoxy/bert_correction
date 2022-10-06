@@ -1,8 +1,18 @@
+"""
+Requirements:
+
+ - java (required only if tree edit distance is used)
+ - numpy
+
+"""
 import numpy as np
-import argparse
-
 from subprocess import Popen, PIPE, STDOUT
-
+import os
+import argparse
+import re
+import pickle
+import csv
+from nltk.util import ngrams
 
 IDCS = {'\u2ff0': 2,  # 12 ideographic description characters and their capacity of son nodes
         '\u2ff1': 2,
@@ -85,7 +95,7 @@ def edit_distance(string_a, string_b, name='Levenshtein'):
                         matrix[x - 1, y - 1] + 2,
                         matrix[x, y - 1] + 1
                     )
-        xxx = matrix
+
     return matrix[size_x - 1, size_y - 1]
 
 
@@ -94,7 +104,8 @@ class CharFuncs(object):
         self.data = self.load_char_meta(char_meta_fname)
         self.char_dict = dict([(c, 0) for c in self.data])
 
-        self.safe = {'\u2ff0': 'A',  # to eliminate the bug that, in Windows CMD, char ⿻ and ⿵ are encoded to be the same.
+        self.safe = {'\u2ff0': 'A',
+                     # to eliminate the bug that, in Windows CMD, char ⿻ and ⿵ are encoded to be the same.
                      '\u2ff1': 'B',
                      '\u2ff2': 'C',
                      '\u2ff3': 'D',
@@ -105,7 +116,7 @@ class CharFuncs(object):
                      '\u2ff8': 'I',
                      '\u2ff9': 'J',
                      '\u2ffa': 'L',
-                     '\u2ffb': 'M',}
+                     '\u2ffb': 'M', }
 
     @staticmethod
     def load_char_meta(fname):
@@ -123,7 +134,7 @@ class CharFuncs(object):
 
     def shape_distance(self, char1, char2, safe=True, as_tree=False):
         """
-        >>> c = CharFuncs('data/char_meta_demo.txt')
+        >>> c = CharFuncs('data/char_meta.txt')
         >>> c.shape_distance('田', '由')
         1
         >>> c.shape_distance('牛', '午')
@@ -174,13 +185,13 @@ class CharFuncs(object):
         return distance
 
     def pronunciation_distance(self, char1, char2):
-        # """
-        # >>> c = CharFuncs('data/char_meta_demo.txt')
-        # >>> c.pronunciation_distance('田', '由')
-        # 3.4
-        # >>> c.pronunciation_distance('牛', '午')
-        # 2.6
-        # """
+        """
+        >>> c = CharFuncs('data/char_meta.txt')
+        >>> c.pronunciation_distance('田', '由')
+        3.4
+        >>> c.pronunciation_distance('牛', '午')
+        2.6
+        """
         assert char1 in self.data
         assert char2 in self.data
         pronunciations1 = self.data[char1]["pronunciation"]
@@ -219,32 +230,72 @@ class CharFuncs(object):
 
         return data
 
+    def similarity_seqs(self, str1, str2, weights=(0.5, 0.5)):
+        sound_w, shape_w = weights
+        str1 = str1.strip()
+        str2 = str2.strip()
+        if str1 == '' or str1 == 'null' or str2 == '' or str2 == 'null' or len(str1) != len(str2):
+            return (0.0, 0)
+
+        if str1 == str2:
+            return (1, 0)
+
+        shape_cnt = 0
+        sound_cnt = 0
+        compare_cnt = 0
+        single_cnt = 0
+        for i in range(len(str1)):
+
+            c1, c2 = str1[i], str2[i]
+            if c1 == c2:
+                # shape_cnt += 1
+                # sound_cnt += 1
+                continue
+            compare_cnt += 1
+            shape_score = self.shape_similarity(c1, c2)
+            sound_score = self.pronunciation_han_similarity(c1, c2)
+            if shape_score >= 0.75 or sound_score >= 0.66:
+                single_cnt += 1
+            shape_cnt += shape_score
+            sound_cnt += sound_score
+
+        all_simi = sound_cnt * sound_w + shape_cnt * shape_w
+        if compare_cnt == 0:
+            return (1, 0)
+        return (max(all_simi / compare_cnt, single_cnt / compare_cnt), compare_cnt)
+
     def similarity(self, char1, char2, weights=(0.8, 0.2, 0.0), as_tree=False):
         """
         this function returns weighted similarity. When used in FASPell, each weight can only be 0 or 1.
         """
+
         # assert char1 in self.char_dict
         # assert char2 in self.char_dict
-        # shape_w, sound_w, freq_w = weights
+        shape_w, sound_w, freq_w = weights
+
         if char1 in self.char_dict and char2 in self.char_dict:
-            # shape_sim = self.shape_similarity(char1, char2, as_tree=as_tree)
+
+            shape_sim = self.shape_similarity(char1, char2, as_tree=as_tree)
             sound_sim = self.pronunciation_similarity(char1, char2)
-            # freq_sim = 1.0 - self.char_dict[char2] / len(self.char_dict)
-            # return shape_sim * shape_w + sound_sim * sound_w + freq_sim * freq_w
-            return sound_sim
+            freq_sim = 1.0 - self.char_dict[char2] / len(self.char_dict)
+
+            return shape_sim * shape_w + sound_sim * sound_w + freq_sim * freq_w
         else:
             return 0.0
 
     def shape_similarity(self, char1, char2, safe=True, as_tree=False):
-        # """
-        # >>> c = CharFuncs(char_mchar_meta_demo.txt)
-        # >>> c.shape_similarity('牛', '午')
-        # 0.8571428571428572
-        # >>> c.shape_similarity('田', '由')
-        # 0.8888888888888888
-        # """
-        assert char1 in self.data
-        assert char2 in self.data
+        """
+        >>> c = CharFuncs('data/char_meta.txt')
+        >>> c.shape_similarity('牛', '午')
+        0.8571428571428572
+        >>> c.shape_similarity('田', '由')
+        0.8888888888888888
+        """
+        if char1 not in self.data or char2 not in self.data:
+            return 0.0
+
+        # assert char1 in self.data
+        # assert char2 in self.data
 
         def safe_encode(decomp):
             tree = ''
@@ -290,13 +341,15 @@ class CharFuncs(object):
         return similarity
 
     def pronunciation_similarity(self, char1, char2):
-        # """
-        # >>> c = CharFuncs('data/chchar_meta.txt')
-        # >>> c.pronunciation_similarity('牛', '午')
-        # 0.27999999999999997
-        # >>> c.pronunciation_similarity('由', '田')
-        # 0.09
-        # """
+        """
+        >>> c = CharFuncs('data/char_meta.txt')
+        >>> c.pronunciation_similarity('牛', '午')
+        0.27999999999999997
+        >>> c.pronunciation_similarity('由', '田')
+        0.09
+
+
+        """
         assert char1 in self.data
         assert char2 in self.data
         pronunciations1 = self.data[char1]["pronunciation"]
@@ -305,6 +358,7 @@ class CharFuncs(object):
         if pronunciations1[0] == 'null' or pronunciations2 == 'null':
             return 0.0
         else:
+
             pronunciations1 = pronunciations1.split(';')  # separate by lan
             pronunciations2 = pronunciations2.split(';')  # separate by lan
 
@@ -321,8 +375,77 @@ class CharFuncs(object):
                             similarity_lan = max(similarity_lan, tmp_sim)
                     similarity += similarity_lan
                     count += 1
+            if count == 0:
+                return 0.0
+            else:
+                return similarity / count
 
+    def pronunciation_han_similarity(self, char1, char2):
+        """
+        >>> c = CharFuncs('data/char_meta.txt')
+        >>> c.pronunciation_similarity('牛', '午')
+        0.27999999999999997
+        >>> c.pronunciation_similarity('由', '田')
+        0.09
+        """
+        if char1 not in self.data or char2 not in self.data:
+            return 0.0
+
+        # assert char1 in self.data
+        # assert char2 in self.data
+        pronunciations1 = self.data[char1]["pronunciation"]
+        pronunciations2 = self.data[char2]["pronunciation"]
+
+        pronunciations1_list = pronunciations1.split(';')  # separate by lan
+        pronunciations2_list = pronunciations2.split(';')
+
+        if pronunciations1_list[0] == 'null' or pronunciations2_list[0] == 'null':
+            return 0.0
+        else:
+            han_pronunciations1 = pronunciations1_list[0]
+            han_pronunciations2 = pronunciations2_list[0]
+
+            han_pronunciations1_set = set()
+            han_pronunciations2_set = set()
+
+            for p1 in han_pronunciations1.split(','):
+                p1 = re.sub('[0-9]+', '', p1)
+                han_pronunciations1_set.add(p1)
+            for p2 in han_pronunciations2.split(','):
+                p2 = re.sub('[0-9]+', '', p2)
+                han_pronunciations2_set.add(p2)
+
+            similarity = 0.0
+            for p1 in han_pronunciations1_set:
+                for p2 in han_pronunciations2_set:
+                    tmp_sim = 1 - edit_distance(p1, p2) / max(len(p1), len(p2))
+                    similarity = max(similarity, tmp_sim)
+
+            return similarity
+
+
+def pronunciation_han_seqs_similarity(first, second):
+    """
+    >>> pronunciation_han_seqs_similarity('di zi jin', 'di zi jing')
+    0.9166666666666666
+
+    """
+    similarity = 0.0
+    count = 0
+    first_list = first.strip().split(" ")
+    second_list = second.strip().split(" ")
+    if len(first_list) != len(second_list):
+        return similarity
+    else:
+        for p1, p2 in zip(first_list, second_list):
+            tmp_similarity = 1 - edit_distance(p1, p2) / max(len(p1), len(p2))
+            similarity += tmp_similarity
+            count += 1
+        if count == 0:
+            return similarity
+        else:
             return similarity / count
+
 
 def string_to_tree(string):
     """
@@ -405,6 +528,7 @@ def pinyin_map(standard_pinyin):
     pinyin += tone
     return pinyin
 
+
 def parse_args():
     usage = '\n1. You can compute character similarity by:\n' \
             'python char_sim.py 午 牛 年 千\n' \
@@ -425,21 +549,83 @@ def parse_args():
     return args
 
 
-if __name__ == '__main__':
-    args = parse_args()
-    c = CharFuncs('data/chchar_meta.txt')
-    if not args.ted:
-        for i, c1 in enumerate(args.multiargs):
-            for c2 in args.multiargs[i:]:
-                if c1 != c2:
-                    print(f'For character pair ({c1}, {c2}):')
-                    print(f'    v-sim = {c.shape_similarity(c1, c2)}')
-                    print(f'    p-sim = {c.pronunciation_similarity(c1, c2)}\n')
-    else:
-        for i, c1 in enumerate(args.multiargs):
-            for c2 in args.multiargs[i:]:
-                if c1 != c2:
-                    print(f'For character pair ({c1}, {c2}):')
-                    print(f'    v-sim = {c.shape_similarity(c1, c2, as_tree=True)}')
-                    print(f'    p-sim = {c.pronunciation_similarity(c1, c2)}\n')
+#
+# def getScore(query):
+#     trigrams_q = ngrams(list(query), 3, pad_left=True, pad_right=True, left_pad_symbol='<s>',
+#                         right_pad_symbol='<e>')
+#     prop_q = 1
+#     for item in trigrams_q:
+#         prop_q *= tri_model.prob(item)
+#     return prop_q
 
+
+if __name__ == '__main__':
+    # 单字的拼音相似性与表意相似性
+
+    dict1 = {}
+
+    f = open('../data/char_meta.txt', 'r', encoding='utf-8')
+
+    with open('/Users/xmly/IdeaProjects/search-xnlp/common-nlp/src/main/resources/distance.config/char_meta.txt',
+              'w') as f1:
+        for line in f:
+            items = line.strip().split('\t')
+            pronunciation = items[2]
+
+            han = pronunciation.split(';')[0]
+            if han == "null":
+                continue
+
+            f1.write(line)
+
+    # char_list = ['末',	'未']
+    #
+    # model = CharFuncs('../data/char_meta.txt')
+    # c1, c2 = '纲', '钢'
+    # print('({},{}):{}'.format(c1,c2, model.shape_similarity(c1, c2)))
+
+    # if True:
+    #     for i in range(len(char_list)):
+    #         for j in range(i + 1, len(char_list)):
+    #             c1, c2 = char_list[i], char_list[j]
+    #             print(f'For character pair ({c1}, {c2}):')
+    #             print(f'    v-sim = {model.shape_similarity(c1, c2)}')
+    # print(f'    p-sim = {model.pronunciation_similarity(c1, c2)}\n')
+    # print(f'    p-sim = {model.pronunciation_han_similarity(c1, c2)}\n')
+
+    # list_pins = ['di zi jin', 'di zi jing', 'de zhi jing']
+    # list_pins = ['zhen', 'zheng', 'jing']
+    #
+    # for i in range(len(list_pins)):
+    #     pin1 = list_pins[i]
+    #     for j in range(i + 1, len(list_pins)):
+    #         pin2 = list_pins[j]
+    #         print(f'For character pair ({pin1}, {pin2}):')
+    #         print(f'    p-sim = {pronunciation_han_seqs_similarity(pin1, pin2)}\n')
+
+    # model = CharFuncs('../data/char_meta.txt')
+    #
+    # # print(model.similarity_seqs('一品风华', '医品风华'))
+    # f = open('../data/test_data/precision_label.txt')
+    # # f = open('../data/test_data/recall_test.txt')
+    # path = '/Users/xmly/PycharmProjects/query/correction/slm/trigram.model'
+    # file_obj = open(path, 'rb')
+    # tri_model = pickle.load(file_obj)
+    # file_obj.close()
+    #
+    # with open('../data/test_data/precision_test_simi.txt', 'w')as f1:
+    #     for line in f:
+    #         line_ = line.strip().split('<:>')
+    #         q = line_[0]
+    #         sq = line_[1]
+    #
+    #         if q == sq:
+    #             continue
+    #
+    #         simi = model.similarity_seqs(q, sq)
+    #
+    #         score1 = getScore(q)
+    #         score2 = getScore(sq)
+    #
+    #         # f1.write('{}\t{}\t{}\t{}\t{}\r\n'.format(q, sq, round(pin_cnt/len(q), 2), round(shape_cnt/len(q), 2), round(all_simi/len(q),2)))
+    #         f1.write('{}\t{}\t{}\t{}\t{}\r\n'.format(q, sq, round(simi[0], 2), score1, score2))
