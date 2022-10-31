@@ -134,7 +134,7 @@ def getScore(query):
 
 if __name__ == '__main__':
     bert_infer = Inference()
-    trigram_model = readbunchobj('/Users/xmly/PycharmProjects/query/correction/slm/trigram.model')
+    trigram_model = readbunchobj('/Users/xmly/PycharmProjects/search_correction_gram/slm/trigram.model')
     print('模型加载完毕...')
     # f = open('./data/test_data/recall_test_plus.txt', 'r', encoding='utf-8')
     f = open('./data/test_data/precision_label.txt', 'r', encoding='utf-8')
@@ -176,11 +176,3 @@ if __name__ == '__main__':
 
     print(right_cnt/all_num)
     print('平均消耗时间：{}'.format((time.time()-s_time)/all_num))
-
-    # with open('data/result/bertRecall_plus.txt', 'w')as f:
-    #     for _ in result_line:
-    #         f.write(_)
-    #         f.write('\r\n')
-
-
-

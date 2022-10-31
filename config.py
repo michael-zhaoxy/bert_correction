@@ -6,11 +6,12 @@ cuda_condition = torch.cuda.is_available()
 device = torch.device('cuda:0' if cuda_condition else 'cpu')
 
 VocabPath = 'checkpoint/saved/vocab.txt'
+VocabPath1 = 'checkpoint/saved/vocab1.txt'
 
 # ## mlm模型文件路径 ## #
-SourcePath = 'data/test/all_data.txt'
-CorpusPath = 'data/test/train.txt'
-TestPath = 'data/test/test.txt'
+SourcePath = 'gene_data/corpus.txt'
+CorpusPath = 'gene_data/train1.txt'
+TestPath = 'gene_data/test1.txt'
 PronunciationPath = 'char_data/char_meta.txt'
 
 # Debug开关
@@ -38,7 +39,7 @@ MLMLearningRate = 1e-4
 BatchSize = 16
 SentenceLength = 16
 # FinetunePath = 'checkpoint/saved/mlm_trained_len_{}.model'.format(SentenceLength)
-FinetunePath = '/Users/xmly/PycharmProjects/smbert_corr_ori/checkpoint/pretrain_model/mlm_trained_alldata_len_16_4.model'
+FinetunePath = '/Users/xmly/PycharmProjects/bert_correction/checkpoint/saved/mlm_trained_len_16.model'
 # ## MLM训练调试参数结束 ## #
 
 # ## MLM通用参数 ## #

@@ -17,23 +17,37 @@ def random_wrong(text):
 
 
 def gen_train_test():
+    list = []
+    with open(SourcePath) as f:
+        line = f.readline()
+        while line:
+            line_arr = line.strip().split('<:>')
+            if len(line_arr) != 2:
+                line = f.readline()
+                continue
+            if len(line_arr[0]) != len(line_arr[1]) or len(line_arr[0]) > 14:
+                line = f.readline()
+                continue
+            list.append(line.strip())
+            line = f.readline()
+
+    random.shuffle(list)
     f_train = open(CorpusPath, 'w', encoding='utf-8')
     f_test = open(TestPath, 'w', encoding='utf-8')
-    with open(SourcePath, 'r', encoding='utf-8') as f:
-        for line in f:
-            line = line.strip()
-            rad = random.randint(0, 10)
-            if rad < 1:
-                # f_test.write(line + '-***-' + random_wrong(line) + '\n')
-                f_test.write(line + '\n')
-            else:
-                f_train.write(line + '\n')
+
+    for line in list:
+        line = line.strip()
+        rad = random.randint(0, 10)
+        if rad < 1:
+            f_test.write(line + '\n')
+        else:
+            f_train.write(line + '\n')
 
     f_train.close()
     f_test.close()
 
 
 if __name__ == '__main__':
-    print(len(open(VocabPath, 'r', encoding='utf-8').readlines()))
+    print(len(open(VocabPath1, 'r', encoding='utf-8').readlines()))
     check_srcdata_and_vocab(SourcePath)
     gen_train_test()

@@ -73,7 +73,7 @@ class Inference(object):
         }
 
         for i, ori in enumerate(text_list):
-            if ori == candidates[i][0] or candidates[i][0] == '[UNK]':
+            if ori == candidates[i][0]:
                 correct_sentence.append(ori)
                 self.top1_acc += 1
                 self.top5_acc += 1
@@ -162,8 +162,12 @@ class Inference(object):
               (self.sen_acc, self.sen_invalid, self.sen_wrong ,self.sen_count))
         print('句子正确率：%s，句子未纠正率：%s，句子纠错率：%s' %
               (round(float(self.sen_acc) / float(self.sen_count), 2), round(float(self.sen_acc) / float(self.sen_count), 2), round(float(self.sen_wrong) / float(self.sen_count), 2)))
+        print('top1正确个数：%s，top1总共个数：%s，top1正确率：%s' %
+              (self.top1_acc, self.char_count, round(float(self.top1_acc) / float(self.char_count), 2)))
+        print('top5正确个数：%s，top5总共个数：%s，top5正确率：%s' %
+              (self.top5_acc, self.char_count, round(float(self.top5_acc) / float(self.char_count), 2)))
 
 
 if __name__ == '__main__':
     bert_infer = Inference('/Users/xmly/PycharmProjects/bert_correction/checkpoint/saved/mlm_trained_len_16.model')
-    bert_infer.inference_batch('/Users/xmly/PycharmProjects/bert_correction/gene_data/test1.txt')
+    bert_infer.inference_batch('data/test_data/recall_test.txt')

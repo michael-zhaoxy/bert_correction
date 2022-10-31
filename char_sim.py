@@ -7,12 +7,8 @@ Requirements:
 """
 import numpy as np
 from subprocess import Popen, PIPE, STDOUT
-import os
 import argparse
 import re
-import pickle
-import csv
-from nltk.util import ngrams
 
 IDCS = {'\u2ff0': 2,  # 12 ideographic description characters and their capacity of son nodes
         '\u2ff1': 2,
@@ -549,59 +545,28 @@ def parse_args():
     return args
 
 
-#
-# def getScore(query):
-#     trigrams_q = ngrams(list(query), 3, pad_left=True, pad_right=True, left_pad_symbol='<s>',
-#                         right_pad_symbol='<e>')
-#     prop_q = 1
-#     for item in trigrams_q:
-#         prop_q *= tri_model.prob(item)
-#     return prop_q
-
-
 if __name__ == '__main__':
     # 单字的拼音相似性与表意相似性
+    char_list = ['末',	'未']
 
-    dict1 = {}
+    model = CharFuncs('./char_data/char_meta.txt')
+    if True:
+        for i in range(len(char_list)):
+            for j in range(i + 1, len(char_list)):
+                c1, c2 = char_list[i], char_list[j]
+                print(f'For character pair ({c1}, {c2}):')
+                print(f'    v-sim = {model.shape_similarity(c1, c2)}')
+    print(f'    p-sim = {model.pronunciation_similarity(c1, c2)}\n')
+    print(f'    p-sim = {model.pronunciation_han_similarity(c1, c2)}\n')
 
-    f = open('../data/char_meta.txt', 'r', encoding='utf-8')
+    list_pins = ['di zi jin', 'di zi jing', 'de zhi jing']
 
-    with open('/Users/xmly/IdeaProjects/search-xnlp/common-nlp/src/main/resources/distance.config/char_meta.txt',
-              'w') as f1:
-        for line in f:
-            items = line.strip().split('\t')
-            pronunciation = items[2]
-
-            han = pronunciation.split(';')[0]
-            if han == "null":
-                continue
-
-            f1.write(line)
-
-    # char_list = ['末',	'未']
-    #
-    # model = CharFuncs('../data/char_meta.txt')
-    # c1, c2 = '纲', '钢'
-    # print('({},{}):{}'.format(c1,c2, model.shape_similarity(c1, c2)))
-
-    # if True:
-    #     for i in range(len(char_list)):
-    #         for j in range(i + 1, len(char_list)):
-    #             c1, c2 = char_list[i], char_list[j]
-    #             print(f'For character pair ({c1}, {c2}):')
-    #             print(f'    v-sim = {model.shape_similarity(c1, c2)}')
-    # print(f'    p-sim = {model.pronunciation_similarity(c1, c2)}\n')
-    # print(f'    p-sim = {model.pronunciation_han_similarity(c1, c2)}\n')
-
-    # list_pins = ['di zi jin', 'di zi jing', 'de zhi jing']
-    # list_pins = ['zhen', 'zheng', 'jing']
-    #
-    # for i in range(len(list_pins)):
-    #     pin1 = list_pins[i]
-    #     for j in range(i + 1, len(list_pins)):
-    #         pin2 = list_pins[j]
-    #         print(f'For character pair ({pin1}, {pin2}):')
-    #         print(f'    p-sim = {pronunciation_han_seqs_similarity(pin1, pin2)}\n')
+    for i in range(len(list_pins)):
+        pin1 = list_pins[i]
+        for j in range(i + 1, len(list_pins)):
+            pin2 = list_pins[j]
+            print(f'For character pair ({pin1}, {pin2}):')
+            print(f'    p-sim = {pronunciation_han_seqs_similarity(pin1, pin2)}\n')
 
     # model = CharFuncs('../data/char_meta.txt')
     #

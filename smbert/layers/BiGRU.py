@@ -26,3 +26,4 @@ class BiGRU(nn.Module):
         gru_out = self.bi_gru_normalization(gru_out)
         gru_out = self.bi_gru_dropout(gru_out)
         return gru_out
+

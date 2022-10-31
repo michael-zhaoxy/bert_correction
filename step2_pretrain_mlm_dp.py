@@ -1,7 +1,7 @@
+import sys
 import os
 os.environ["CUDA_VISIBLE_DEVICES"] = '0,1'
 
-import torch
 import torch.nn as nn
 
 from torch.optim import Adam
@@ -9,6 +9,20 @@ from smbert.data.smbert_dataset import *
 from smbert.layers.SM_Bert_mlm import SMBertMlm
 from smbert.layers.EcBert import EcBert
 from transformers import BertConfig
+
+
+class Unbuffered(object):
+    def __init__(self, stream):
+        self.stream = stream
+
+    def write(self, data):
+        self.stream.write(data)
+        self.stream.flush()
+
+    def __getattr__(self, attr):
+        return getattr(self.stream, attr)
+# 实时展示输出
+sys.stdout = Unbuffered(sys.stdout)
 
 if __name__ == '__main__':
     best_top1 = 0
@@ -19,34 +33,35 @@ if __name__ == '__main__':
     bert_config_T.device = device
     soft_masked_bert = SMBertMlm(bert_config_T).to(device)
     soft_masked_bert.device = device
+    print(torch.cuda.device_count())
     if torch.cuda.device_count()>1:
+        print("Let's use", torch.cuda.device_count(), "GPUs!")
         soft_masked_bert= nn.DataParallel(soft_masked_bert, device_ids=[0,1])
-    if Debug:
-        print('Total Parameters:', sum([p.nelement() for p in soft_masked_bert.parameters()]))
+#     if Debug:
+#         print('Total Parameters:', sum([p.nelement() for p in soft_masked_bert.parameters()]))
 
-    if os.path.exists(FinetunePath):
-        print('开始加载本地预训练模型！')
-        soft_masked_bert.load_pretrain(FinetunePath)
-        print('完成加载本地预训练模型！')
-
+#     if os.path.exists(FinetunePath):
+#         print('开始加载本地预训练模型！')
+#         soft_masked_bert.load_pretrain(FinetunePath)
+#         print('完成加载本地预训练模型！')
 
     dataset = SMBertDataSet(CorpusPath)
     evalset = SMBertEvalSet(TestPath)
 
     optim = Adam(soft_masked_bert.parameters(), lr=MLMLearningRate)
     criterion = nn.CrossEntropyLoss().to(device)
-
+    SavedPath = '/xdl/private/michael.zhao/bert_correction/checkpoint/saved/mlm_trained_len_16_dp.model'
     for epoch in range(MLMEpochs):
         # train
-        if Debug:
+        if True:
             print('第%s个Epoch %s' % (epoch, get_time()))
         soft_masked_bert.train()
-        data_iter = tqdm(enumerate(dataset),
-                         desc='EP_%s:%d' % ('train', epoch),
-                         total=len(dataset),
-                         bar_format='{l_bar}{r_bar}')
+#         data_iter = tqdm(enumerate(dataset),
+#                          desc='EP_%s:%d' % ('train', epoch),
+#                          total=len(dataset),
+#                          bar_format='{l_bar}{r_bar}')
         print_loss = 0.0
-        for i, data in data_iter:
+        for i, data in enumerate(dataset):
             if Debug:
                 print('生成数据 %s' % get_time())
             data = {k: v.to(device) for k, v in data.items()}
@@ -116,6 +131,6 @@ if __name__ == '__main__':
                 # save
                 if precision > best_top1:
                     best_top1 = precision
-                    torch.save(soft_masked_bert.cpu(), FinetunePath)
+                    torch.save(soft_masked_bert.cpu(), SavedPath)
                     soft_masked_bert.to(device)
-                    print('EP:%d Model Saved on:%s\n' % (epoch, FinetunePath))
+                    print('EP:%d Model Saved on:%s\n' % (epoch, SavedPath))

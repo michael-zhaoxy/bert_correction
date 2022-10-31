@@ -1,14 +1,13 @@
 import os
 os.environ["CUDA_VISIBLE_DEVICES"] = '0,1'
 
-import torch
 import torch.nn as nn
 
 from torch.optim import Adam
 from smbert.data.smbert_dataset import *
 from smbert.layers.SM_Bert_mlm import SMBertMlm
-from smbert.layers.EcBert import EcBert
 from transformers import BertConfig
+from smbert.layers.loss import CpoLoss
 
 if __name__ == '__main__':
     best_top1 = 0
@@ -19,6 +18,7 @@ if __name__ == '__main__':
     bert_config_T.device = device
     soft_masked_bert = SMBertMlm(bert_config_T).to(device)
     soft_masked_bert.device = device
+    print('device: ', device)
     if torch.cuda.device_count()>1:
         soft_masked_bert= nn.DataParallel(soft_masked_bert, device_ids=[0,1])
     if Debug:
@@ -29,12 +29,12 @@ if __name__ == '__main__':
         soft_masked_bert.load_pretrain(FinetunePath)
         print('完成加载本地预训练模型！')
 
-
     dataset = SMBertDataSet(CorpusPath)
     evalset = SMBertEvalSet(TestPath)
 
     optim = Adam(soft_masked_bert.parameters(), lr=MLMLearningRate)
     criterion = nn.CrossEntropyLoss().to(device)
+    criterion_cpo = CpoLoss().to(device)
 
     for epoch in range(MLMEpochs):
         # train
@@ -60,9 +60,11 @@ if __name__ == '__main__':
             if Debug:
                 print('完成前向 %s' % get_time())
             mask_loss = criterion(mlm_output, batch_labels)
-            print_loss = mask_loss.item()
+            cpo_loss = criterion_cpo(mlm_output, batch_labels)
+            loss = mask_loss + cpo_loss
+            print_loss = loss.item()
 
-            mask_loss.backward()
+            loss.backward()
             optim.step()
             optim.zero_grad()
 

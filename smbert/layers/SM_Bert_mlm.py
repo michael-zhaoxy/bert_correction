@@ -32,8 +32,7 @@ from smbert.layers.BiGRU import BiGRU
 #
 #         # 申明网络
 #         self.smbert_emd = SMBbertEmbeddings(vocab_size=self.vocab_size, max_len=self.max_len, hidden_size=self.hidden_size)
-#         # self.bi_gru = BiGRU(self.hidden_size, self.hidden_size)
-#         # self.sigmoid = nn.Sigmoid()
+#         self.bi_gru_linear = BiGRU(self.hidden_size, self.hidden_size)
 #         self.transformer_blocks = nn.ModuleList(
 #             Transformer(
 #                 hidden_size=self.hidden_size,
@@ -57,16 +56,16 @@ from smbert.layers.BiGRU import BiGRU
 #         # embedding
 #         if Debug:
 #             print('获取embedding %s' % get_time())
-#         embedding_x = self.smbert_emd(input_token, position_ids, segment_ids)
+#         embedding_x, mask_embedding_x = self.smbert_emd(input_token, position_ids, segment_ids)
 #         if Debug:
 #             print('获取attention_mask %s' % get_time())
 #
 #         # error detection
 #         # 这里要严格符合GRU模块的输入size，内部已将batch_first改为True
-#         # bi_gru_x = self.bi_gru(embedding_x)
-#         # pi = self.sigmoid(bi_gru_x)
-#         # embedding_i = pi * mask_embedding_x + (1 - pi) * embedding_x
-#         # embedding_i = embedding_x
+#         bi_gru_x = self.bi_gru_linear(embedding_x)
+#         pi = self.sigmoid(bi_gru_x)
+#         embedding_i = pi * mask_embedding_x + (1 - pi) * embedding_x
+#         embedding_i = embedding_x
 #         # transformer
 #         if AttentionMask:
 #             attention_mask = self.gen_attention_masks(segment_ids).to(device)

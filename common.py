@@ -3,7 +3,7 @@ from config import *
 
 def check_srcdata_and_vocab(target_path):
     f1 = open(target_path, 'r', encoding='utf-8')
-    f2 = open(VocabPath, 'r', encoding='utf-8')
+    f2 = open(VocabPath1, 'r', encoding='utf-8')
     local_tokens = []
     vocabs = []
     missing = []
